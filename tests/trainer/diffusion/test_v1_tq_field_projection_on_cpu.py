@@ -184,6 +184,7 @@ def test_next_train_batch_rollout_seed_index_is_unique_within_a_step(gen_batch_s
     )
     trainer._generation_batch_size = MethodType(cls._generation_batch_size, trainer)
     trainer._fetch_one_gen_batch = MethodType(cls._fetch_one_gen_batch, trainer)
+    trainer._assign_rollout_seed = MethodType(cls._assign_rollout_seed, trainer)
 
     first = cls._next_train_batch(trainer)
     refill = cls._next_train_batch(trainer, gen_batch_size)
@@ -198,6 +199,25 @@ def test_next_train_batch_rollout_seed_index_is_unique_within_a_step(gen_batch_s
     assert [int(v) for v in next_step["rollout_seed_index"]] == [0, 1]
     if gen_batch_size == 2:
         assert [int(v) for v in first["index"]] == [0, 1]
+
+
+def test_next_train_batch_without_rollout_seed_stays_unseeded():
+    cls = trainer_base_module.PolicyGradientDiffusionTrainerV1
+    trainer = SimpleNamespace(
+        config=OmegaConf.create({"data": {"train_batch_size": 2}, "actor_rollout_ref": {"rollout": {"seed": None}}}),
+        train_dataloader_it=iter([{"raw_prompt": np.array(["p0", "p1"], dtype=object)}]),
+        _gen_batch_seq=0,
+        _effective_generation_batch_size=2,
+        global_steps=3,
+    )
+    trainer._generation_batch_size = MethodType(cls._generation_batch_size, trainer)
+    trainer._fetch_one_gen_batch = MethodType(cls._fetch_one_gen_batch, trainer)
+    trainer._assign_rollout_seed = MethodType(cls._assign_rollout_seed, trainer)
+
+    batch = cls._next_train_batch(trainer)
+
+    assert "rollout_seed" not in batch.keys()
+    assert "rollout_seed_index" not in batch.keys()
 
 
 @pytest.mark.parametrize("algorithm", ["policy_gradient", "direct_preference"])
