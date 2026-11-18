@@ -632,6 +632,48 @@ class VllmOmniPipelineBase:
         return builder(attention_mask)
 
 
+class DiffusersRolloutPipelineBase:
+    """Registry base for diffusers rollout pipelines (``actor_rollout_ref.rollout.name=diffusers``).
+
+    A registered pipeline runs the rollout on diffusers modules in the rollout
+    server process and returns the same per-sample trajectory fields as the
+    vLLM-Omni adapter registered under the same ``(architecture, algorithm)``.
+
+    Example::
+
+        @DiffusersRolloutPipelineBase.register("StableDiffusion3Pipeline", algorithm="flow_grpo")
+        class StableDiffusion3DiffusersPipelineWithLogProb:
+            ...
+    """
+
+    _registry: dict[tuple[str, str], type] = {}
+
+    @classmethod
+    def register(cls, architecture: str, algorithm: str):
+        """Class decorator that registers a pipeline for ``(architecture, algorithm)``."""
+
+        def decorator(subclass: type) -> type:
+            cls._registry[(architecture, algorithm)] = subclass
+            return subclass
+
+        return decorator
+
+    @classmethod
+    def get_class(cls, architecture: str, algorithm: str) -> type:
+        """Return the registered pipeline class for ``(architecture, algorithm)``.
+
+        Raises:
+            NotImplementedError: If no diffusers rollout pipeline is registered for the key.
+        """
+        pipeline_cls = cls._registry.get((architecture, algorithm))
+        if pipeline_cls is None:
+            raise NotImplementedError(
+                f"No diffusers rollout pipeline registered for ({architecture!r}, {algorithm!r}). "
+                f"Registered: {sorted(cls._registry)}"
+            )
+        return pipeline_cls
+
+
 class OmniModelBase(ABC):
     """Abstract base class for omni model training adapters.
 

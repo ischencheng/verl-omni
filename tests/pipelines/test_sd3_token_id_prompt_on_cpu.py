@@ -68,6 +68,9 @@ class _ParityPipeline(SD3TokenIdPromptMixin):
         self.device = torch.device("cpu")
         self.od_config = SimpleNamespace(dtype=torch.float32)
 
+    def _model_dtype(self) -> torch.dtype:
+        return self.od_config.dtype
+
 
 def _agent_loop_tokenize(tokenizer, texts: list[str], max_length: int) -> list[list[int]]:
     """Mirror ``DiffusionSingleTurnAgentLoop._tokenize_per_encoder`` for one tokenizer."""

@@ -54,6 +54,8 @@ class SD3TokenIdPromptMixin:
     decodes ids back to text. Sequences arrive unpadded (with special tokens,
     truncated at tokenization time); each encoder pads with its own tokenizer's
     pad token, matching the ``padding="max_length"`` behaviour of the text path.
+    The host pipeline provides the SD3 tokenizers and text encoders, ``device``
+    and ``_model_dtype()``.
     """
 
     def _get_clip_prompt_embeds_from_ids(
@@ -72,8 +74,8 @@ class SD3TokenIdPromptMixin:
         text_input_ids = pad_token_id_batch(prompt_ids, self.tokenizer_max_length, tokenizer.pad_token_id, self.device)
 
         prompt_embeds = text_encoder(text_input_ids, output_hidden_states=True)
-        pooled_prompt_embeds = prompt_embeds[0].to(dtype=self.od_config.dtype, device=self.device)
-        prompt_embeds = prompt_embeds.hidden_states[-2].to(dtype=self.od_config.dtype, device=self.device)
+        pooled_prompt_embeds = prompt_embeds[0].to(dtype=self._model_dtype(), device=self.device)
+        prompt_embeds = prompt_embeds.hidden_states[-2].to(dtype=self._model_dtype(), device=self.device)
 
         _, seq_len, _ = prompt_embeds.shape
         prompt_embeds = prompt_embeds.repeat(1, num_images_per_prompt, 1)
@@ -95,12 +97,12 @@ class SD3TokenIdPromptMixin:
             return torch.zeros(
                 (batch_size * num_images_per_prompt, max_sequence_length, self.transformer.joint_attention_dim),
                 device=self.device,
-                dtype=self.od_config.dtype,
+                dtype=self._model_dtype(),
             )
 
         text_input_ids = pad_token_id_batch(prompt_ids, max_sequence_length, self.tokenizer_3.pad_token_id, self.device)
         prompt_embeds = self.text_encoder_3(text_input_ids)[0]
-        prompt_embeds = prompt_embeds.to(dtype=self.od_config.dtype, device=self.device)
+        prompt_embeds = prompt_embeds.to(dtype=self._model_dtype(), device=self.device)
 
         _, seq_len, _ = prompt_embeds.shape
         prompt_embeds = prompt_embeds.repeat(1, num_images_per_prompt, 1)
