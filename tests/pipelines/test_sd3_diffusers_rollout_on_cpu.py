@@ -113,6 +113,18 @@ def test_trajectory_layout_and_seed_determinism(pipeline):
     assert not torch.equal(other.all_latents, first.all_latents)
 
 
+def test_latent_output_decodes_only_for_a_requested_preview(pipeline):
+    prompt = _prompt(pipeline, PROMPTS[0])
+    latent_only = pipeline.generate([prompt], [_sampling(SEEDS[0], output_type="latent")])[0]
+    with_preview = pipeline.generate(
+        [prompt], [_sampling(SEEDS[0], output_type="latent", requested_outputs=["image_preview"])]
+    )[0]
+
+    assert latent_only.image is None
+    assert with_preview.image is not None
+    torch.testing.assert_close(with_preview.latents, latent_only.latents, rtol=0.0, atol=0.0)
+
+
 def test_batch_matches_per_request(pipeline):
     prompts = [_prompt(pipeline, text) for text in PROMPTS]
     batched = pipeline.generate(prompts, [_sampling(seed) for seed in SEEDS])

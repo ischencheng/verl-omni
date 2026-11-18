@@ -27,6 +27,7 @@ from diffusers.utils.torch_utils import randn_tensor
 
 from verl_omni.pipelines.model_base import DiffusersRolloutPipelineBase
 from verl_omni.pipelines.request_batch import sample_per_sample_sde_windows
+from verl_omni.pipelines.rollout_media import DiffusionIOSpec, MediaSpec, requested_artifact_names
 from verl_omni.pipelines.schedulers import FlowMatchSDEDiscreteScheduler
 from verl_omni.pipelines.sd3_flow_grpo.common import (
     SD3_CLIP_TOKENS_KEY,
@@ -51,7 +52,7 @@ class DiffusersRolloutSample:
     """
 
     image: torch.Tensor | None
-    """Decoded image ``(C, H, W)`` in ``[-1, 1]``; ``None`` for latent-only output."""
+    """Decoded image ``(C, H, W)`` in ``[-1, 1]``; ``None`` for latent output without an ``image_preview`` request."""
     latents: torch.Tensor
     """Final latents ``(C, h, w)``, fp32."""
     all_latents: torch.Tensor
@@ -113,6 +114,13 @@ class StableDiffusion3DiffusersPipelineWithLogProb(SD3TokenIdPromptMixin):
         dtype: Dtype of the text encoders, VAE and transformer.
         device: Device the pipeline runs on.
     """
+
+    diffusion_io_spec = DiffusionIOSpec(
+        artifacts={
+            "image_preview": MediaSpec("image", "decoded", "CHW"),
+            "image_latent": MediaSpec("image", "latent", "CHW"),
+        }
+    )
 
     def __init__(self, *, model_path: str, dtype: torch.dtype, device: torch.device | str):
         local_files_only = os.path.exists(model_path)
@@ -287,7 +295,12 @@ class StableDiffusion3DiffusersPipelineWithLogProb(SD3TokenIdPromptMixin):
                     all_timesteps[row].append(timestep_value)
 
         image = None
-        if output_type != "latent":
+        requested = {
+            name
+            for params in flat_params
+            for name in requested_artifact_names(params.get("requested_outputs"), context="SD3 diffusers rollout")
+        }
+        if output_type != "latent" or "image_preview" in requested:
             decode_latents = latents.to(self.vae.dtype) / self.vae.config.scaling_factor + self.vae.config.shift_factor
             image = self.vae.decode(decode_latents, return_dict=False)[0]
 
