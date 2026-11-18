@@ -19,6 +19,9 @@ from verl.workers.rollout.base import _ROLLOUT_REGISTRY
 _ROLLOUT_REGISTRY[("vllm_omni", "async")] = (
     "verl_omni.workers.rollout.vllm_rollout.vllm_omni_async_server.vLLMOmniServerAdapter"
 )
+_ROLLOUT_REGISTRY[("diffusers", "async")] = (
+    "verl_omni.workers.rollout.diffusers_rollout.diffusers_server.DiffusersServerAdapter"
+)
 
 
 def get_rollout_sequence_parallel_size(config) -> int:

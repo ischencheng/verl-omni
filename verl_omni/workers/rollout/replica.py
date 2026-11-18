@@ -100,3 +100,12 @@ def _load_vllm_omni():
 
 
 RolloutReplicaRegistry.register("vllm_omni", _load_vllm_omni)
+
+
+def _load_diffusers():
+    from verl_omni.workers.rollout.diffusers_rollout.diffusers_server import DiffusersReplica
+
+    return DiffusersReplica
+
+
+RolloutReplicaRegistry.register("diffusers", _load_diffusers)
